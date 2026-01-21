@@ -1,17 +1,73 @@
-"""
-FastAPI Backend - Simple and Minimal
-"""
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile
+import tensorflow as tf
+import numpy as np
+import os
+import requests
+import zipfile
+from PIL import Image
+import io
 
 app = FastAPI()
 
+# ===============================
+# MODEL DOWNLOAD CONFIG
+# ===============================
+MODEL_DIR = "models"
+MODEL_ZIP_PATH = "models/resnet_final.zip"
+MODEL_FILE_PATH = "models/resnet_final.keras"
+
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1qIKWggK9hm66SoEhWNe1qEToCbQfgUN5"
+
+# ===============================
+# DOWNLOAD & EXTRACT MODEL
+# ===============================
+if not os.path.exists(MODEL_FILE_PATH):
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    print("⬇️ Downloading model from Google Drive...")
+
+    response = requests.get(MODEL_URL)
+    with open(MODEL_ZIP_PATH, "wb") as f:
+        f.write(response.content)
+
+    print("📦 Extracting model...")
+    with zipfile.ZipFile(MODEL_ZIP_PATH, "r") as zip_ref:
+        zip_ref.extractall(MODEL_DIR)
+
+    os.remove(MODEL_ZIP_PATH)
+    print("✅ Model ready!")
+
+# ===============================
+# LOAD MODEL
+# ===============================
+print("🔄 Loading ResNet model...")
+model = tf.keras.models.load_model(MODEL_FILE_PATH)
+print("✅ Model loaded successfully")
+
+# ===============================
+# ROUTES
+# ===============================
 @app.get("/")
 def root():
     return {"message": "ThoraxSense API Running"}
 
 @app.post("/predict")
-def predict():
-    return {"prediction": "Normal"}
+async def predict(file: UploadFile = File(...)):
+    image_bytes = await file.read()
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    image = image.resize((224, 224))
+
+    img_array = np.array(image) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    prediction = model.predict(img_array)
+    result = np.argmax(prediction)
+
+    labels = ["Normal", "Pneumonia", "Tuberculosis"]
+
+    return {
+        "prediction": labels[result]
+    }
+
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -101,4 +157,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=8000,
         reload=True
+
     )
