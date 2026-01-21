@@ -1,5 +1,18 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-tensorflow==2.13.0  # or your version
+# requirements.txt - COMPATIBLE VERSION
+
+# Core web framework (use compatible versions)
+fastapi==0.100.0  # Older but compatible version
+uvicorn==0.23.2  # Compatible with the typing-extensions version
+
+# TensorFlow with CPU support only (lighter for deployment)
+tensorflow-cpu==2.13.0  # Use CPU version for deployment
+
+# Image processing
 Pillow==10.1.0
 python-multipart==0.0.6
+
+# HTTP requests (for model download)
+requests==2.31.0
+
+# Optional: remove gdown since we're not using it
+# gdown==4.7.1  # Remove or comment out
